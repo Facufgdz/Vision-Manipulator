@@ -47,9 +47,9 @@ class PickAndPlace(Node):
         frame = self.br.imgmsg_to_cv2(msg, "bgr8")
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         
-        # Rango para color verde (el cubo)
-        lower_green = np.array([35, 50, 50])
-        upper_green = np.array([85, 255, 255])
+        # Rango para color verde (ajustado para mayor sensibilidad)
+        lower_green = np.array([35, 40, 40])
+        upper_green = np.array([90, 255, 255])
         
         mask = cv2.inRange(hsv, lower_green, upper_green)
         
@@ -62,22 +62,18 @@ class PickAndPlace(Node):
         
         if contours:
             largest_contour = max(contours, key=cv2.contourArea)
-            if cv2.contourArea(largest_contour) > 500:
+            if cv2.contourArea(largest_contour) > 100:
                 M = cv2.moments(largest_contour)
                 cx = int(M['m10']/M['m00'])
                 cy = int(M['m01']/M['m00'])
                 
-                # Mapeo simple de imagen a coordenadas de brazo (esto requiere calibración real)
-                # Basado en la cámara a 0.6, 0.0, 0.8 mirando hacia atrás
-                # cy (vertical imagen) mapea a X (profundidad)
-                # cx (horizontal imagen) mapea a Y (lateral)
+                # Corregimos el mapeo: 
+                # Con la cámara rotada 180º, cy más pequeño (arriba) es X más grande.
+                # El centro (320, 240) es X=0.4.
+                self.object_y = (320 - cx) * 0.0018
+                self.object_x = 0.4 - (cy - 240) * 0.0018
                 
-                # Ejemplo aproximado:
-                # El centro de la imagen (640x480) es 320, 240
-                self.object_y = -(cx - 320) / 1000.0  # Invertido y escalado
-                self.object_x = 0.2 + (cy - 240) / 1000.0 # Ajuste base
-                
-                self.get_logger().info(f'Objeto detectado en imagen: ({cx}, {cy}). Coordenadas estimadas: X={self.object_x:.2f}, Y={self.object_y:.2f}')
+                self.get_logger().info(f'Detección (Corregida): X={self.object_x:.3f}, Y={self.object_y:.3f}')
                 self.state = 'DETECTING'
 
     def send_arm_command(self, positions, duration=2.0):
@@ -101,18 +97,18 @@ class PickAndPlace(Node):
         if self.state == 'DETECTING':
             self.get_logger().info('Pasando a mover encima del objeto...')
             # Abrir gripper primero
-            self.send_gripper_command(0.019) # Valor máximo de apertura según URDF
-            # Mover a posición de observación/aproximación
-            # Calculamos joint1 a partir de atan2(y, x)
+            self.send_gripper_command(0.019) 
+            # Posición de aproximación (más inclinada hacia adelante)
             j1 = np.arctan2(self.object_y, self.object_x)
-            self.send_arm_command([j1, -0.6, 0.3, 0.8])
+            self.send_arm_command([j1, 0.0, -0.5, 0.8])
             self.state = 'MOVING_ABOVE'
             
         elif self.state == 'MOVING_ABOVE':
-            # Baja para agarrar
-            self.get_logger().info('Bajando brazo...')
+            # Baja al NIVEL DEL SUELO pero sin chocar (Suavizado)
+            self.get_logger().info('Bajando brazo con cuidado...')
             j1 = np.arctan2(self.object_y, self.object_x)
-            self.send_arm_command([j1, 0.2, 0.1, 0.5])
+            # Reducimos de 0.8 a 0.6 para no chocar con el suelo
+            self.send_arm_command([j1, 0.65, 0.35, 0.3]) 
             self.state = 'LOWERING'
             
         elif self.state == 'LOWERING':

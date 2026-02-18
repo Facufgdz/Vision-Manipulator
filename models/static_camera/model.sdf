@@ -2,7 +2,7 @@
 <sdf version="1.6">
   <model name="static_camera">
     <static>true</static>
-    <pose>0.5 0 0.8 0 0 0</pose>
+    <pose>0 0 0 0 0 0</pose>
     <link name="camera_link">
       <!-- Visual para poder ver la cámara como una caja roja -->
       <visual name="visual">

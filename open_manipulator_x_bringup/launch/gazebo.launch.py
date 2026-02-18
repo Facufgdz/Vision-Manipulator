@@ -178,8 +178,8 @@ def generate_launch_description():
             arguments=[
                 '-file', os.path.join(os.path.expanduser("~"), 'ros2_ws/src/open_manipulator/models/static_camera/model.sdf'),
                 '-entity', 'static_camera',
-                '-x', '0.6', '-y', '0.0', '-z', '0.8',
-                '-R', '0.0', '-P', '1.0', '-Y', '3.14159',
+                '-x', '0.4', '-y', '0.0', '-z', '1.0',
+                '-R', '0.0', '-P', '1.5708', '-Y', '3.14159',
             ],
             output='screen',
         ),
@@ -190,7 +190,7 @@ def generate_launch_description():
             arguments=[
                 '-file', os.path.join(os.path.expanduser("~"), 'ros2_ws/src/open_manipulator/models/graspable_cube/model.sdf'),
                 '-entity', 'green_cube',
-                '-x', '0.2', '-y', '0.0', '-z', '0.1',
+                '-x', '0.18', '-y', '0.0', '-z', '0.05',
             ],
             output='screen',
         ),
