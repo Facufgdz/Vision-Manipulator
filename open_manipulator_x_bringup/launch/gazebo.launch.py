@@ -19,10 +19,10 @@
 import os
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, SetEnvironmentVariable
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, EnvironmentVariable
 from launch.substitutions import PathJoinSubstitution
 from launch.substitutions import ThisLaunchFileDir
 
@@ -43,6 +43,21 @@ def generate_launch_description():
     if not is_valid_to_launch():
         print('Can not launch fake robot in Raspberry Pi')
         return LaunchDescription([])
+
+    # Set gazebo model path
+    pkg_open_manipulator_x_description = FindPackageShare('open_manipulator_x_description')
+    
+    # We add the parent of the description package and the models folder to Gazebo path
+    gazebo_model_path = SetEnvironmentVariable(
+        name='GAZEBO_MODEL_PATH',
+        value=[
+            EnvironmentVariable('GAZEBO_MODEL_PATH', default_value=''),
+            ':',
+            PathJoinSubstitution([pkg_open_manipulator_x_description, '..']),
+            ':',
+            os.path.join(os.path.expanduser("~"), 'ros2_ws/src/open_manipulator/models')
+        ]
+    )
 
     start_rviz = LaunchConfiguration('start_rviz')
     prefix = LaunchConfiguration('prefix')
@@ -67,6 +82,7 @@ def generate_launch_description():
             'Y': LaunchConfiguration('yaw', default='0.00')}
 
     return LaunchDescription([
+        gazebo_model_path,
         DeclareLaunchArgument(
             'start_rviz',
             default_value='false',
@@ -153,6 +169,29 @@ def generate_launch_description():
                 '-x', pose['x'], '-y', pose['y'], '-z', pose['z'],
                 '-R', pose['R'], '-P', pose['P'], '-Y', pose['Y'],
                 ],
+            output='screen',
+        ),
+
+        Node(
+            package='gazebo_ros',
+            executable='spawn_entity.py',
+            arguments=[
+                '-file', os.path.join(os.path.expanduser("~"), 'ros2_ws/src/open_manipulator/models/static_camera/model.sdf'),
+                '-entity', 'static_camera',
+                '-x', '0.6', '-y', '0.0', '-z', '0.8',
+                '-R', '0.0', '-P', '1.0', '-Y', '3.14159',
+            ],
+            output='screen',
+        ),
+
+        Node(
+            package='gazebo_ros',
+            executable='spawn_entity.py',
+            arguments=[
+                '-file', os.path.join(os.path.expanduser("~"), 'ros2_ws/src/open_manipulator/models/graspable_cube/model.sdf'),
+                '-entity', 'green_cube',
+                '-x', '0.2', '-y', '0.0', '-z', '0.1',
+            ],
             output='screen',
         ),
     ])

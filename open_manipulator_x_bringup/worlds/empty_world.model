@@ -42,5 +42,8 @@
         </constraints>
       </ode>
     </physics>
+        <include>
+      <uri>model://static_camera</uri>
+    </include>
   </world>
 </sdf>
