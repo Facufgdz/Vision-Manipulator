@@ -48,8 +48,5 @@
       </ros>
     </plugin>
 
-    <include>
-      <uri>model://static_camera</uri>
-    </include>
   </world>
 </sdf>

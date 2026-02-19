@@ -4,15 +4,22 @@ Este repositorio contiene una implementación personalizada del **OpenMANIPULATO
 
 ## 🚀 Características Implementadas
 
-1.  **Visión Artificial con OpenCV**: Nodo de procesamiento de imágenes que detecta un objeto verde mediante filtrado de color (HSV).
-2.  **Cámara Cenital Estática**: Integración de una cámara en la simulación posicionada a 1 metro de altura, alineada perfectamente para una vista de planta del área de trabajo.
-3.  **Objeto Graspable**: Creación de un cubo verde de 3cm con propiedades físicas (masa, inercia, fricción) optimizadas para ser agarrado por el gripper.
-4.  **Máquina de Estados de Control**: Lógica automática que gestiona la secuencia:
-    *   **Detección**: Identifica el centroide del objeto.
-    *   **Aproximación**: Mueve el gripper sobre el objeto.
-    *   **Descenso**: Baja la pinza a nivel del suelo con precisión.
-    *   **Agarre**: Acciona el gripper.
-    *   **Elevación**: Levanta el objeto para completar el ciclo.
+1.  **Visión Universal (No-Color Dependiente)**: Nodo de procesamiento de imágenes que detecta cualquier objeto que resalte sobre el suelo mediante umbralización de grises y máscaras ROI (Region of Interest) para evitar la auto-detección del propio brazo.
+2.  **Calibración Maestra Óptica**: Implementación de una matriz de transformación de píxeles a coordenadas de robot basada en una pose de calibración fija (Master Pose).
+3.  **Física de Agarre Avanzada**: Ajuste fino de parámetros de contacto en Gazebo (`kp`, `kd`, `mu`, `minDepth`) tanto en el Gripper como en los objetos para evitar que los objetos salgan disparados o se resbalen.
+4.  **Torque Potenciado**: Modificación del URDF para incrementar el límite de esfuerzo (`effort`) de los eslabones (de 1.0 a 10.0), mejorando la respuesta física ante cargas en la simulación.
+5.  **Control de Trayectorias en Tiempo Real**: Lógica de seguimiento continuo (10Hz) que ajusta dinámicamente la extensión del brazo basándose en el feedback visual.
+
+---
+
+## ✅ Avances y Soluciones
+*   **Agarre Estable**: Se solucionó el problema de colisiones violentas reduciendo la velocidad de aproximación y ajustando la amortiguación de los contactos.
+*   **Levantamiento Exitoso**: El robot es capaz de localizar el cubo, descender sin golpear el suelo (gracias a la calibración de altura Z) y elevarlo de forma consistente.
+*   **Independencia de Color**: El sistema ahora rastrea cualquier objeto (cajas, esferas, cilindros) que entre en su campo de visión.
+
+## ⚠️ Problemas Pendientes (Work in Progress)
+*   **Rotación de Base (Eje Y)**: A pesar de implementar cálculos trigonométricos (`atan2`) y aumentar el torque, la rotación de la base (`joint1`) presenta una respuesta inconsistente en Gazebo al intentar seguir movimientos laterales agresivos.
+*   **Suavizado de Trayectorias**: El control a alta frecuencia (10Hz) puede generar vibraciones menores durante el seguimiento dinámico que necesitan ser filtradas.
 
 ---
 
@@ -24,15 +31,12 @@ Asegúrate de tener instalado ROS 2 Humble y las dependencias correspondientes (
 # Navegar al workspace
 cd ~/ros2_ws
 
-# Clonar el repositorio (si no lo tienes aún)
-git clone https://github.com/Facufgdz/Vision-Manipulator.git src/open_manipulator
-
 # Instalar dependencias necesarias
 sudo apt update
 sudo apt install ros-humble-cv-bridge ros-humble-gazebo-ros-pkgs ros-humble-control-msgs
 
-# Compilar el proyecto
-colcon build --packages-select open_manipulator open_manipulator_x_bringup
+# Compilar el proyecto completo incluyendo descripciones
+colcon build --symlink-install
 source install/setup.bash
 ```
 
@@ -41,31 +45,27 @@ source install/setup.bash
 ## 🏃 Ejecución
 
 ### 1. Iniciar la Simulación (Gazebo)
-Lanza el entorno con el brazo, la cámara y el cubo:
 ```bash
 ros2 launch open_manipulator_x_bringup gazebo.launch.py
 ```
 
-### 2. Iniciar el Nodo de Visión y Control
-En una terminal nueva, ejecuta el script de seguimiento:
+### 2. Iniciar el Seguimiento por Visión
 ```bash
-source install/setup.bash
-ros2 run open_manipulator follow_camera.py
+# Seguir cualquier objeto detectado
+ros2 run open_manipulator follow_with_camera.py
 ```
-*Se abrirán dos ventanas de OpenCV mostrando la cámara original y la máscara de detección.*
+
+### 3. (Opcional) Calibración de Cámara
+Si cambias la altura de la cámara, puedes recalibrar los píxeles usando:
+```bash
+ros2 run open_manipulator camera_calibration.py
+```
 
 ---
 
 ## 🎮 Comandos Útiles
 
-### Mover la cámara dinámicamente
-Si deseas ajustar la posición de la cámara mientras Gazebo está abierto, puedes usar el servicio de estados:
-```bash
-ros2 service call /gazebo/set_entity_state gazebo_msgs/srv/SetEntityState "{state: {name: 'static_camera', pose: {position: {x: 0.4, y: 0.0, z: 1.2}, orientation: {x: 0.0, y: 0.707, z: 0.0, w: 0.707}}}}"
-```
-
 ### Limpiar procesos de Gazebo
-Si la simulación se queda trabada, usa este comando para cerrar todo:
 ```bash
 pkill -9 gzserver; pkill -9 gzclient; pkill -9 -f gazebo
 ```
@@ -73,10 +73,10 @@ pkill -9 gzserver; pkill -9 gzclient; pkill -9 -f gazebo
 ---
 
 ## 📁 Estructura del Proyecto
-*   `open_manipulator/follow_camera.py`: Nodo principal de Python (Visión + Control).
-*   `models/graspable_cube/`: Definición SDF del cubo verde.
-*   `open_manipulator_x_bringup/launch/gazebo.launch.py`: Configuración de lanzamiento y spawneo.
-*   `open_manipulator_x_bringup/worlds/empty_world.model`: Mundo con plugin de estados habilitado.
+*   `open_manipulator/follow_with_camera.py`: Nodo de Seguimiento Dinámico (Visión Universal + PID).
+*   `open_manipulator/camera_calibration.py`: Herramienta de mapeo Pixel-to-Robot.
+*   `open_manipulator_x_description/urdf/`: URDF con límites de torque potenciados.
+*   `models/graspable_cube/`: Modelo optimizado con alta fricción.
 
 ---
 **Desarrollado para:** Facundo FG (Vision-Manipulator Project)

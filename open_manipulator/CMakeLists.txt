@@ -4,6 +4,8 @@ find_package(ament_cmake REQUIRED)
 
 install(PROGRAMS
   follow_camera.py
+  camera_calibration.py
+  follow_with_camera.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

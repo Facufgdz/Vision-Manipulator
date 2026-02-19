@@ -178,8 +178,8 @@ def generate_launch_description():
             arguments=[
                 '-file', os.path.join(os.path.expanduser("~"), 'ros2_ws/src/open_manipulator/models/static_camera/model.sdf'),
                 '-entity', 'static_camera',
-                '-x', '0.4', '-y', '0.0', '-z', '1.0',
-                '-R', '0.0', '-P', '1.5708', '-Y', '3.14159',
+                '-x', '1.0', '-y', '0.0', '-z', '0.5',
+                '-R', '0.0', '-P', '0.40', '-Y', '3.14159',
             ],
             output='screen',
         ),
